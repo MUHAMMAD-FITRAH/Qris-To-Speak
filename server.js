@@ -88,5 +88,5 @@ app.post("/api/invoice/:id/pay", (req, res) => {
 // Start server
 app.listen(8080, () => {
   console.log("✅ Server jalan");
-  console.log(`👉 http://localhost:${PORT}/`);
+  console.log(`👉 http://localhost:8080/`);
 });
