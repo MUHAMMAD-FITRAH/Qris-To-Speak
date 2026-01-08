@@ -131,7 +131,6 @@
     }
     .bd{ padding: 16px; }
 
-    /* toolbar buttons */
     .toolbar{
       display:flex;
       gap:10px;
@@ -180,7 +179,6 @@
     .v{ color:var(--text); font-size:13px; font-weight:800; word-break: break-word; }
     .muted{ color: var(--muted); font-size: 12px; }
 
-    /* QR + Steps: make steps readable (not a thin column) */
     .qrGrid{
       margin-top: 14px;
       display:grid;
@@ -231,7 +229,6 @@
     .steps li{ margin: 7px 0; }
     .money{ font-variant-numeric: tabular-nums; letter-spacing:.2px; }
 
-    /* Right side stack */
     .stack{
       display:grid;
       gap: var(--gap);
@@ -266,20 +263,13 @@
       word-break: break-word;
     }
 
-    /* ---------------- Responsive ---------------- */
-
-    /* Tablet: narrower left */
     @media (max-width: 1040px){
       .grid{ grid-template-columns: 420px 1fr; }
     }
-
-    /* Tablet: collapse QR+steps to vertical, keep two main columns if space */
     @media (max-width: 980px){
       .grid{ grid-template-columns: 1fr; }
       .qrGrid{ grid-template-columns: 1fr; }
     }
-
-    /* Mobile: full-width buttons, kv 1 col */
     @media (max-width: 640px){
       :root{ --gap: 12px; }
       .wrap{ padding: 14px; }
@@ -312,7 +302,6 @@
     </header>
 
     <div class="grid">
-      <!-- LEFT: QR + Invoice -->
       <section class="card">
         <div class="hd">
           <h2>QR Pembayaran</h2>
@@ -357,7 +346,6 @@
         </div>
       </section>
 
-      <!-- RIGHT: Status + Log -->
       <div class="stack">
         <section class="card">
           <div class="hd">
@@ -411,6 +399,16 @@
   let lastSpoken = "";
   let lastPayUrl = "";
 
+  // ✅ QR selalu statis ke /scan
+  const STATIC_SCAN_URL = location.origin + "/scan";
+
+  // ✅ Set QR statis sekali, tidak pernah berubah
+  qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=" + encodeURIComponent(STATIC_SCAN_URL);
+
+  // ✅ Set link bayar awal juga ke statis (biar konsisten)
+  payLinkA.textContent = STATIC_SCAN_URL;
+  payLinkA.href = STATIC_SCAN_URL;
+
   function nowStr(){
     return new Date().toLocaleString("id-ID", { hour12: false });
   }
@@ -445,28 +443,27 @@
   }
 
   function speak(text){
-  // ✅ Jika berjalan di APK Kotlin (WebView) gunakan native TTS
-  if (window.AndroidBridge && typeof AndroidBridge.speak === "function") {
-    AndroidBridge.speak(text);
+    // ✅ Kotlin WebView bridge
+    if (window.AndroidBridge && typeof AndroidBridge.speak === "function") {
+      AndroidBridge.speak(text);
+      lastSpoken = text;
+      btnSpeakLast.disabled = false;
+      return;
+    }
+
+    // fallback browser biasa
+    if(!("speechSynthesis" in window)){
+      alert("Browser tidak mendukung Text-to-Speech.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "id-ID";
+    u.rate = 1.0;
+    window.speechSynthesis.speak(u);
     lastSpoken = text;
     btnSpeakLast.disabled = false;
-    return;
   }
-
-  // ✅ Fallback: jika dibuka di browser biasa, tetap pakai speechSynthesis
-  if(!("speechSynthesis" in window)){
-    alert("Browser tidak mendukung Text-to-Speech.");
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "id-ID";
-  u.rate = 1.0;
-  window.speechSynthesis.speak(u);
-  lastSpoken = text;
-  btnSpeakLast.disabled = false;
-}
-
 
   async function newInvoice(){
     setStatus("Menunggu pembayaran");
@@ -474,6 +471,7 @@
     lastAmount.textContent = "-";
     lastTime.textContent = nowStr();
 
+    // tetap boleh generate invoice (untuk dicatat / log)
     const r = await fetch("/api/invoice/new", { method:"POST", headers:{ "Content-Type":"application/json" }});
     const j = await r.json();
     if(!j.ok){
@@ -482,18 +480,16 @@
       return;
     }
 
-    const fullPayUrl = location.origin + j.payUrl;
-    lastPayUrl = fullPayUrl;
-
+    // invoice tetap ditampilkan (untuk info/log)
     invEl.textContent = j.invoiceId;
-    payLinkA.textContent = fullPayUrl;
-    payLinkA.href = fullPayUrl;
 
-    // QR image
-    qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=" + encodeURIComponent(fullPayUrl);
+    // ✅ Link bayar tetap statis (QR juga statis), tidak berubah
+    lastPayUrl = STATIC_SCAN_URL;
+    payLinkA.textContent = STATIC_SCAN_URL;
+    payLinkA.href = STATIC_SCAN_URL;
 
     btnCopy.disabled = false;
-    log(`NEW invoice=${j.invoiceId}`);
+    log(`NEW invoice=${j.invoiceId} (QR tetap statis ke /scan)`);
     speak("Silakan scan QR untuk pembayaran.");
   }
 
@@ -538,7 +534,7 @@
   });
 
   setStatus("Siap");
-  log("Kasir siap. Klik 'Buat QR Pembayaran' untuk mulai.");
+  log("Kasir siap. QR statis aktif. Scan selalu ke /scan.");
 </script>
 </body>
 </html>
