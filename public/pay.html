@@ -137,7 +137,6 @@
       line-height: 1.45;
     }
 
-    /* Mobile refinements */
     @media (max-width: 640px){
       body{ padding: 14px; }
       .bd{ padding: 14px; }
@@ -172,6 +171,8 @@
       <div class="row">
         <button id="btnPay">Bayar (Demo)</button>
         <button class="ghost" id="btnFill" type="button">Isi Cepat 10.000</button>
+        <!-- ✅ tombol baru -->
+        <button class="ghost" id="btnPayAgain" type="button">Bayar Lagi (Invoice Baru)</button>
       </div>
 
       <div class="msg" id="msg">Menunggu input…</div>
@@ -184,7 +185,7 @@
 
 <script>
   const params = new URLSearchParams(location.search);
-  const invoice = params.get("invoice");
+  let invoice = params.get("invoice");
 
   const invEl = document.getElementById("inv");
   const statusEl = document.getElementById("status");
@@ -192,16 +193,17 @@
   const amountEl = document.getElementById("amount");
   const btnPay = document.getElementById("btnPay");
   const btnFill = document.getElementById("btnFill");
+  const btnPayAgain = document.getElementById("btnPayAgain");
 
   invEl.textContent = invoice || "-";
 
   function setMsg(t){ msgEl.textContent = t; }
-  function cleanAmount(v){ return String(v).replace(/[^\d.]/g, ""); }
+  function cleanAmount(v){ return String(v).replace(/[^\d]/g, ""); }
 
   async function refreshStatus(){
     if(!invoice){
       statusEl.textContent = "INVALID";
-      setMsg("Invoice tidak valid.");
+      setMsg("Invoice tidak valid. Scan ulang QR.");
       btnPay.disabled = true;
       return;
     }
@@ -210,15 +212,17 @@
       const j = await r.json();
       if(!j.ok){
         statusEl.textContent = "NOT_FOUND";
-        setMsg("Invoice tidak ditemukan.");
+        setMsg("Invoice tidak ditemukan. Scan ulang QR.");
         btnPay.disabled = true;
         return;
       }
       statusEl.textContent = j.status;
       if(j.status === "PAID"){
+        // ✅ tetap izinkan "Bayar Lagi" (invoice baru)
         btnPay.disabled = true;
-        setMsg("Invoice sudah dibayar. Anda bisa menutup halaman ini.");
+        setMsg("Invoice ini sudah dibayar. Tekan 'Bayar Lagi' untuk transaksi berikutnya.");
       }else{
+        btnPay.disabled = false;
         setMsg("Silakan masukkan nominal dan tekan Bayar.");
       }
     }catch(e){
@@ -259,11 +263,17 @@
         return;
       }
       statusEl.textContent = "PAID";
-      setMsg(`Berhasil. Pembayaran demo sebesar Rp ${amount.toLocaleString("id-ID")} telah dikirim ke kasir.`);
+      setMsg(`Berhasil. Pembayaran demo sebesar Rp ${amount.toLocaleString("id-ID")} telah dikirim ke kasir. Tekan 'Bayar Lagi' untuk transaksi berikutnya.`);
     }catch(e){
       btnPay.disabled = false;
       setMsg("Terjadi error jaringan. Coba ulang.");
     }
+  });
+
+  // ✅ Bayar berkali-kali: buat invoice baru via /scan lalu pindah ke invoice baru
+  btnPayAgain.addEventListener("click", () => {
+    // /scan akan buat invoice baru dan redirect ke /pay.html?invoice=...
+    location.href = "/scan";
   });
 
   refreshStatus();
