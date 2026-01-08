@@ -445,18 +445,28 @@
   }
 
   function speak(text){
-    if(!("speechSynthesis" in window)){
-      alert("Browser tidak mendukung Text-to-Speech.");
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "id-ID";
-    u.rate = 1.0;
-    window.speechSynthesis.speak(u);
+  // ✅ Jika berjalan di APK Kotlin (WebView) gunakan native TTS
+  if (window.AndroidBridge && typeof AndroidBridge.speak === "function") {
+    AndroidBridge.speak(text);
     lastSpoken = text;
     btnSpeakLast.disabled = false;
+    return;
   }
+
+  // ✅ Fallback: jika dibuka di browser biasa, tetap pakai speechSynthesis
+  if(!("speechSynthesis" in window)){
+    alert("Browser tidak mendukung Text-to-Speech.");
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "id-ID";
+  u.rate = 1.0;
+  window.speechSynthesis.speak(u);
+  lastSpoken = text;
+  btnSpeakLast.disabled = false;
+}
+
 
   async function newInvoice(){
     setStatus("Menunggu pembayaran");
