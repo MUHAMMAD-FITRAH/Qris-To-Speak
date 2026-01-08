@@ -4,17 +4,32 @@ const path = require("path");
 const app = express();
 app.use(express.json());
 
-// __dirname SUDAH ADA di CommonJS → JANGAN deklarasi ulang
+// Static files
 app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "kasir.html"));
-});
-
 
 // In-memory store (demo)
 const invoices = new Map();
 const sseClients = new Set();
+
+// ✅ Root "/" selalu tampilkan kasir.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "kasir.html"));
+});
+
+// ✅ QR statis: tiap scan buat invoice baru lalu redirect ke pay.html
+app.get("/scan", (req, res) => {
+  const invoiceId =
+    "INV-" + Math.random().toString(36).slice(2, 10).toUpperCase();
+
+  invoices.set(invoiceId, {
+    status: "OPEN",
+    amount: null,
+    createdAt: Date.now(),
+    paidAt: null,
+  });
+
+  res.redirect(`/pay.html?invoice=${encodeURIComponent(invoiceId)}`);
+});
 
 // SSE endpoint (kasir listen di sini)
 app.get("/events", (req, res) => {
@@ -33,21 +48,22 @@ function broadcast(event, payload) {
   for (const c of sseClients) c.write(msg);
 }
 
-// Buat invoice baru
+// Buat invoice baru (untuk tombol kasir, opsional)
 app.post("/api/invoice/new", (req, res) => {
-  const invoiceId = "INV-" + Math.random().toString(36).slice(2, 10).toUpperCase();
+  const invoiceId =
+    "INV-" + Math.random().toString(36).slice(2, 10).toUpperCase();
 
   invoices.set(invoiceId, {
     status: "OPEN",
     amount: null,
     createdAt: Date.now(),
-    paidAt: null
+    paidAt: null,
   });
 
   res.json({
     ok: true,
     invoiceId,
-    payUrl: `/pay.html?invoice=${encodeURIComponent(invoiceId)}`
+    payUrl: `/pay.html?invoice=${encodeURIComponent(invoiceId)}`,
   });
 });
 
@@ -84,14 +100,15 @@ app.post("/api/invoice/:id/pay", (req, res) => {
   broadcast("paid", {
     invoiceId: req.params.id,
     amount,
-    ts: inv.paidAt
+    ts: inv.paidAt,
   });
 
   res.json({ ok: true, invoiceId: req.params.id, amount });
 });
 
-// Start server
-app.listen(8080, () => {
+// Start server (Railway pakai PORT env)
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
   console.log("✅ Server jalan");
-  console.log(`👉 http://localhost:8080/`);
+  console.log(`👉 http://localhost:${PORT}/`);
 });
