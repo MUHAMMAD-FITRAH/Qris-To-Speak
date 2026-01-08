@@ -7,6 +7,11 @@ app.use(express.json());
 // __dirname SUDAH ADA di CommonJS → JANGAN deklarasi ulang
 app.use(express.static(path.join(__dirname, "public")));
 
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "kasir.html"));
+});
+
+
 // In-memory store (demo)
 const invoices = new Map();
 const sseClients = new Set();
