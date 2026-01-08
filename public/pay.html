@@ -148,7 +148,7 @@
 <body>
   <div class="card">
     <header>
-      <h1>Pembayaran (Demo)</h1>
+      <h1>Selamat datang di SenaSpeakPay</h1>
       <span class="badge">Input Nominal</span>
     </header>
 
@@ -270,9 +270,8 @@
     }
   });
 
-  // ✅ Bayar berkali-kali: buat invoice baru via /scan lalu pindah ke invoice baru
   btnPayAgain.addEventListener("click", () => {
-    // /scan akan buat invoice baru dan redirect ke /pay.html?invoice=...
+    
     location.href = "/scan";
   });
 
